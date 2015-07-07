@@ -7,6 +7,10 @@ var request2 = require('request');
 var request = request.defaults({jar: true});
 var request2 = request2.defaults({jar: true});
 var async = require('async');
+var adminCookiesObject;
+var adminCookies;
+var adminCookiesString;
+var cookie;
 
 if (request === request2 ) console.log('__________________________');
 
@@ -59,7 +63,10 @@ var SERVICE_ANIMAL_MARKET = {
 
 var url = res.body.url;
 var tasks =[];
-tasks.push(getServices(), AdminLogIn(), AddService(),getCookiesRequest(), userLogIn(), AddService());
+
+//tasks.push(getServices(), AdminLogIn(), AddService(), userLogIn(), AddService(), AdminLogOut(),AddService());
+tasks.push(getServices(), AdminLogIn(), AddService(), userLogIn(), AddService(), AdminLogOut(),AddService());
+
 async.series(tasks, function (err,results)   {
     if (err) {
         console.log(err)
@@ -84,7 +91,6 @@ function getServices(){
 
 
 ///ADMIN LOGIN
-
 function AdminLogIn(){
     return function (callback)
     {
@@ -92,15 +98,48 @@ function AdminLogIn(){
         var   serviceUrl = res.body.url + 'user/signIn';
         var url = res.body.url;
 
-        request.post(serviceUrl, {json: true, body: loginData }, function (err, res, body) {
+        adminCookiesObject = request.jar();
+
+        request.post(serviceUrl, {jar: adminCookiesObject, json: true, body: loginData }, function (err, res, body) {
             if (!err && res.statusCode == 200) {
-                console.log(res.body);
+                console.log(' ----------------------------------------------------------- Admin LogIn: ',res.body);
+
+                adminCookiesString = adminCookiesObject.getCookieString(serviceUrl); // "key1=value1; key2=value2; ..."
+                adminCookies = adminCookiesObject.getCookies(serviceUrl);
+                console.log('Cookies ADMIN  REQUEST:',adminCookiesString );
+                return callback()
+            }
+            return callback(err)
+        });
+    }
+
+}///ADMIN LOGIN
+function AdminLogOut(){
+    return function (callback)
+    {
+        var loginData = USERS.ADMIN_DEFAULT;
+        var   serviceUrl = res.body.url + 'user/signOut';
+        var url = res.body.url;
+
+        cookie = request.cookie(adminCookiesString);
+        //adminCookiesObject.setCookie(adminCookies[0], serviceUrl);
+        adminCookiesObject.setCookie(cookie, serviceUrl);
+
+
+        request.post(serviceUrl, {jar: adminCookiesObject, json: true, body: loginData }, function (err, res, body) {
+            if (!err && res.statusCode == 200) {
+                console.log(' ----------------------------------------------------------- Admin LogOut: ',res.body);
+
+                adminCookiesString = adminCookiesObject.getCookieString(serviceUrl); // "key1=value1; key2=value2; ..."
+                adminCookies = adminCookiesObject.getCookies(serviceUrl);
+                console.log('Cookies ADMIN  REQUEST:',adminCookiesString );
                 return callback()
             }
             return callback(err)
         });
     }
 }
+
 
 ///ADMIN ADD SERVICE
 
@@ -109,8 +148,11 @@ function AddService(){
     {
         var data = SERVICE_ANIMAL_MARKET;
         var serviceUrl = url + 'adminService/';
+        cookie = request.cookie(adminCookiesString);
+        //adminCookiesObject.setCookie(adminCookies[0], serviceUrl);
+        adminCookiesObject.setCookie(cookie, serviceUrl);
 
-        request.post(serviceUrl, {json: true, body: data }, function (err, res, body) {
+        request.post(serviceUrl, {jar: adminCookiesObject, json: true, body: data }, function (err, res, body) {
 
             if (!err && res.statusCode == 201) {
                 console.log(res.body);
@@ -129,6 +171,7 @@ function getCookiesRequest(){
 
         var j = request.jar();
         request(serviceUrl, {jar: j}, function (err, res, body) {
+            //request(serviceUrl, function (err, res, body) {
 
             var cookie_string = j.getCookieString(serviceUrl); // "key1=value1; key2=value2; ..."
             var cookies = j.getCookies(serviceUrl);
@@ -143,6 +186,9 @@ function getCookiesRequest(){
     }
 }
 
+//connect.sid=s%3AROhh6TYELTfbXbPfe0GypnpdUNxOz78r.gvtftPMfzy%2F%2B32Dpgefz9NKn4%2BDJaxtqkmpGNzQTcEs; Path=/; HttpOnly
+//connect.sid=s%3AROhh6TYELTfbXbPfe0GypnpdUNxOz78r.gvtftPMfzy%2F%2B32Dpgefz9NKn4%2BDJaxtqkmpGNzQTcEs
+
 ///USER LOGIN
 function userLogIn(){
     return function (callback)
@@ -152,23 +198,10 @@ function userLogIn(){
         serviceUrl = res.body.url + 'user/signIn';
         var url = res.body.url;
 
-        request2.post(serviceUrl, {json: true, body: loginData }, function (err, res, body) {
+        request.post(serviceUrl, {json: true, body: loginData }, function (err, res, body) {
             //request.post(serviceUrl, {'content-type': 'application/json', body:JSON.stringify(loginData)}, function (error, response, body) {
             if (!err && res.statusCode == 200) {
-                console.log('User LogIn:',body);// Show the HTML for the Google homepage.
-
-
-                    //var data = SERVICE_ANIMAL_MARKET;
-                    //var serviceUrl = url + 'adminService/';
-                    //
-                    //request.post(serviceUrl, {json: true, body: data }, function (err, res, body) {
-                    //
-                    //    if (!err && res.statusCode == 201) {
-                    //        console.log(res.body);
-                    //        return  callback(null,res.body)
-                    //    }
-                    //    return callback(err + body)
-                    //});
+                console.log(' ----------------------------------------------------------- User LogIn:',body);// Show the HTML for the Google homepage.
                 return  callback(null,res.body)
 
             }
